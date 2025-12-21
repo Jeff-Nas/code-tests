@@ -1,21 +1,40 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Document, Page, pdfjs, Outline } from 'react-pdf';
-import { ChevronLeft, ChevronRight, Menu, X, ZoomIn, ZoomOut, RotateCw, Download } from 'lucide-react';
+import {
+    ChevronLeft,
+    ChevronRight,
+    Menu,
+    X,
+    ZoomIn,
+    ZoomOut,
+    RotateCw,
+    Download
+} from 'lucide-react';
 
 // Estilos essenciais do react-pdf
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
 
-// Configuração do Worker
+// Configuração do Worker via CDN (Crucial para mobile)
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
 const ViwerPDF = ({ pdfUrl }) => {
     const [numPages, setNumPages] = useState(null);
     const [pageNumber, setPageNumber] = useState(1);
+
+    // Estado para o input de página (o que o usuário digita)
+    const [pageInput, setPageInput] = useState(1);
+
     const [sidebarOpen, setSidebarOpen] = useState(true);
     const [scale, setScale] = useState(1.0);
     const [containerWidth, setContainerWidth] = useState(null);
+
     const containerRef = useRef(null);
+
+    // Sincroniza o input com a página atual quando ela muda via botões ou sidebar
+    useEffect(() => {
+        setPageInput(pageNumber);
+    }, [pageNumber]);
 
     // Responsividade da largura
     useEffect(() => {
@@ -43,18 +62,31 @@ const ViwerPDF = ({ pdfUrl }) => {
         setPageNumber((prev) => Math.min(Math.max(1, prev + offset), numPages));
     }
 
+    // Função que processa a mudança de página ao digitar
+    const handlePageSubmit = (e) => {
+        e.preventDefault(); // Evita recarregar a página
+
+        let page = parseInt(pageInput);
+
+        // Validação: Garante que é um número válido dentro do limite do PDF
+        if (!isNaN(page) && page >= 1 && page <= numPages) {
+            setPageNumber(page);
+        } else {
+            // Se digitar algo errado, volta para o número da página atual
+            setPageInput(pageNumber);
+        }
+    };
+
     function onItemClick({ pageNumber }) {
         setPageNumber(pageNumber);
         if (window.innerWidth < 768) setSidebarOpen(false);
     }
 
-    // --- Função de Download ---
     const handleDownload = () => {
         const link = document.createElement('a');
         link.href = pdfUrl;
-        // Tenta pegar o nome do arquivo da URL ou define um padrão
         link.download = pdfUrl.split('/').pop() || 'manual-tecnico.pdf';
-        link.target = '_blank'; // Garante que funcione mesmo se o navegador bloquear download direto
+        link.target = '_blank';
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -96,20 +128,16 @@ const ViwerPDF = ({ pdfUrl }) => {
             <main className="flex-1 flex flex-col h-full overflow-hidden relative transition-all duration-300">
 
                 {/* Toolbar Superior */}
-                <div className="h-16 bg-white border-b border-gray-200 flex justify-between items-center px-4 md:px-6 shadow-sm z-10">
+                <div className="h-16 bg-white border-b border-gray-200 flex justify-between items-center px-4 md:px-6 shadow-sm z-10 shrink-0 gap-4">
 
-                    <div className="flex items-center gap-3">
+                    {/* Grupo Esquerda: Menu + Download */}
+                    <div className="flex items-center gap-2 md:gap-4">
                         {!sidebarOpen && (
-                            <button
-                                onClick={() => setSidebarOpen(true)}
-                                className="p-2 hover:bg-gray-100 rounded text-gray-600"
-                                title="Abrir Índice"
-                            >
+                            <button onClick={() => setSidebarOpen(true)} className="p-2 hover:bg-gray-100 rounded text-gray-600">
                                 <Menu size={20} />
                             </button>
                         )}
 
-                        {/* --- Botão de Download (NOVO) --- */}
                         <button
                             onClick={handleDownload}
                             className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 text-blue-700 rounded hover:bg-blue-100 cursor-pointer transition-colors text-sm font-medium border border-blue-100"
@@ -120,7 +148,7 @@ const ViwerPDF = ({ pdfUrl }) => {
                         </button>
                     </div>
 
-                    {/* Controles de Paginação */}
+                    {/* Grupo Centro: Paginação (Setas + Input) */}
                     <div className="flex items-center gap-2 bg-gray-50 p-1 rounded-lg border border-gray-200">
                         <button
                             onClick={() => changePage(-1)}
@@ -130,9 +158,22 @@ const ViwerPDF = ({ pdfUrl }) => {
                             <ChevronLeft size={16} />
                         </button>
 
-                        <span className="text-sm font-medium w-24 text-center tabular-nums text-gray-600">
-                            {pageNumber} / {numPages || '--'}
-                        </span>
+                        <form onSubmit={handlePageSubmit} className="flex items-center">
+                            <input
+                                type="number"
+                                min={1}
+                                max={numPages || 1}
+                                value={pageInput}
+                                onChange={(e) => setPageInput(e.target.value)}
+                                onBlur={handlePageSubmit} // Salva ao clicar fora também
+                                className="w-12 text-center text-sm font-medium bg-transparent outline-none hover:bg-white focus:bg-white focus:ring-1 focus:ring-blue-300 rounded transition-all appearance-none m-0"
+                            />
+                            <span className="text-sm font-medium text-gray-500 select-none">
+                                / {numPages || '--'}
+                            </span>
+                            {/* Botão submit invisível para permitir o ENTER */}
+                            <button type="submit" hidden />
+                        </form>
 
                         <button
                             onClick={() => changePage(1)}
@@ -143,19 +184,19 @@ const ViwerPDF = ({ pdfUrl }) => {
                         </button>
                     </div>
 
-                    {/* Controles de Zoom */}
+                    {/* Grupo Direita: Zoom */}
                     <div className="hidden md:flex items-center gap-2">
                         <button onClick={() => setScale(s => Math.max(0.5, s - 0.1))} className="p-2 hover:bg-gray-100 rounded text-gray-500">
                             <ZoomOut size={18} />
                         </button>
-                        <span className="text-xs text-gray-500 w-10 text-center">{Math.round(scale * 100)}%</span>
+                        <span className="text-xs text-gray-500 w-10 text-center select-none">{Math.round(scale * 100)}%</span>
                         <button onClick={() => setScale(s => Math.min(2.0, s + 0.1))} className="p-2 hover:bg-gray-100 rounded text-gray-500">
                             <ZoomIn size={18} />
                         </button>
                     </div>
                 </div>
 
-                {/* Wrapper do Documento PDF (Página Única) */}
+                {/* Wrapper do Documento */}
                 <div
                     ref={containerRef}
                     className="flex-1 bg-slate-700 overflow-y-auto flex justify-center p-4 md:p-8 relative"
