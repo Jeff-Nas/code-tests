@@ -41,7 +41,10 @@ const ViwerPDF = ({ pdfUrl }) => {
     const resizeObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {
         if (entry.contentRect.width) {
-          setContainerWidth(entry.contentRect.width - 48);
+          const isMobile = window.innerWidth < 768;
+          const safetyMargin = isMobile ? 16 : 64;
+
+          setContainerWidth(entry.contentRect.width - safetyMargin);
         }
       }
     });
