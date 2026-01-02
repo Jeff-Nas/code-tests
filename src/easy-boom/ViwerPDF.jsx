@@ -47,14 +47,19 @@ const ViwerPDF = ({ pdfUrl }) => {
     setPageInput(pageNumber);
   }, [pageNumber]);
 
-  // Responsividade da largura
+  // --- RESPONSIVIDADE ---
   useEffect(() => {
     const resizeObserver = new ResizeObserver((entries) => {
       window.requestAnimationFrame(() => {
         for (const entry of entries) {
           if (entry.contentRect.width) {
-            const isMobile = window.innerWidth < 768;
-            const margin = isMobile ? 10 : 50;
+            const width = window.innerWidth;
+
+            // Lógica Simplificada:
+            // Menor que 1024px (Mobile e Tablet) -> Margem 10px (Visual nativo)
+            // Maior que 1024px (Desktop) -> Margem 50px (Visual limpo)
+            const margin = width < 1024 ? 10 : 50;
+
             setContainerWidth(entry.contentRect.width - margin);
           }
         }
@@ -234,7 +239,7 @@ const ViwerPDF = ({ pdfUrl }) => {
 
         <div
           ref={containerRef}
-          className="flex-1 bg-slate-700 overflow-y-auto flex justify-center p-2 md:p-8 relative"
+          className="flex-1 bg-slate-700 overflow-y-auto flex justify-center p-2 lg:p-8 relative"
         >
           <div className="shadow-2xl h-fit">
             <Document
