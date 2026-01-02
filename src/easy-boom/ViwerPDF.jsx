@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { Document, Page, pdfjs, Outline } from "react-pdf";
 import {
   ChevronLeft,
@@ -9,21 +9,23 @@ import {
   ZoomOut,
   RotateCw,
   Download,
+  BookX, // Ícone novo para "sem índice"
 } from "lucide-react";
 
-// Estilos essenciais do react-pdf
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
 
-// Configuração do Worker via CDN (Crucial para mobile)
+// Configuração do Worker
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
 const ViwerPDF = ({ pdfUrl }) => {
   const [numPages, setNumPages] = useState(null);
   const [pageNumber, setPageNumber] = useState(1);
-
-  // Estado para o input de página (o que o usuário digita)
   const [pageInput, setPageInput] = useState(1);
+
+  // NOVO: Estado para saber se tem índice
+  // Começa como true (ou null) para não mostrar a mensagem de erro antes de carregar
+  const [hasOutline, setHasOutline] = useState(true);
 
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [scale, setScale] = useState(1.0);
@@ -31,7 +33,16 @@ const ViwerPDF = ({ pdfUrl }) => {
 
   const containerRef = useRef(null);
 
-  // Sincroniza o input com a página atual quando ela muda via botões ou sidebar
+  // OTIMIZAÇÃO SAFARI: Opções de fonte memoizadas
+  const options = useMemo(
+    () => ({
+      cMapUrl: `https://unpkg.com/pdfjs-dist@${pdfjs.version}/cmaps/`,
+      cMapPacked: true,
+      standardFontDataUrl: `https://unpkg.com/pdfjs-dist@${pdfjs.version}/standard_fonts/`,
+    }),
+    []
+  );
+
   useEffect(() => {
     setPageInput(pageNumber);
   }, [pageNumber]);
@@ -39,14 +50,15 @@ const ViwerPDF = ({ pdfUrl }) => {
   // Responsividade da largura
   useEffect(() => {
     const resizeObserver = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        if (entry.contentRect.width) {
-          const isMobile = window.innerWidth < 768;
-          const safetyMargin = isMobile ? 16 : 64;
-
-          setContainerWidth(entry.contentRect.width - safetyMargin);
+      window.requestAnimationFrame(() => {
+        for (const entry of entries) {
+          if (entry.contentRect.width) {
+            const isMobile = window.innerWidth < 768;
+            const margin = isMobile ? 10 : 50;
+            setContainerWidth(entry.contentRect.width - margin);
+          }
         }
-      }
+      });
     });
 
     if (containerRef.current) {
@@ -56,26 +68,33 @@ const ViwerPDF = ({ pdfUrl }) => {
     return () => resizeObserver.disconnect();
   }, [sidebarOpen]);
 
-  function onDocumentLoadSuccess({ numPages }) {
-    setNumPages(numPages);
+  // ATUALIZADO: Recebe o objeto PDF completo para verificar o índice
+  function onDocumentLoadSuccess(pdf) {
+    setNumPages(pdf.numPages);
     setPageNumber(1);
+
+    // Verifica se o PDF tem outline (sumário)
+    pdf
+      .getOutline()
+      .then((outline) => {
+        // Se outline for null ou array vazio, não tem índice
+        setHasOutline(outline && outline.length > 0);
+      })
+      .catch(() => {
+        setHasOutline(false);
+      });
   }
 
   function changePage(offset) {
     setPageNumber((prev) => Math.min(Math.max(1, prev + offset), numPages));
   }
 
-  // Função que processa a mudança de página ao digitar
   const handlePageSubmit = (e) => {
-    e.preventDefault(); // Evita recarregar a página
-
+    e.preventDefault();
     let page = parseInt(pageInput);
-
-    // Validação: Garante que é um número válido dentro do limite do PDF
     if (!isNaN(page) && page >= 1 && page <= numPages) {
       setPageNumber(page);
     } else {
-      // Se digitar algo errado, volta para o número da página atual
       setPageInput(pageNumber);
     }
   };
@@ -96,8 +115,7 @@ const ViwerPDF = ({ pdfUrl }) => {
   };
 
   return (
-    <div className="flex h-screen w-full bg-gray-100 font-sans overflow-hidden text-gray-800">
-      {/* --- Sidebar (Sumário) --- */}
+    <div className="flex h-[100dvh] w-full bg-gray-100 font-sans overflow-hidden text-gray-800">
       <aside
         className={`bg-white border-r border-gray-200 h-full flex flex-col transition-all duration-300 ease-in-out ${
           sidebarOpen
@@ -116,26 +134,31 @@ const ViwerPDF = ({ pdfUrl }) => {
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
-          <div
-            className="
-            [&_ul]:list-none [&_ul]:pl-2 
-            [&_li]:mt-2 
-            [&_a]:text-sm [&_a]:text-gray-600 [&_a]:no-underline [&_a]:block [&_a]:cursor-pointer [&_a]:transition-colors
-            hover:[&_a]:text-blue-600 hover:[&_a]:font-medium
-          "
-          >
-            <Document file={pdfUrl} loading="Carregando índice...">
-              <Outline onItemClick={onItemClick} />
-            </Document>
-          </div>
+          {/* LÓGICA DE EXIBIÇÃO DO ÍNDICE */}
+          {hasOutline ? (
+            <div className="[&_ul]:list-none [&_ul]:pl-2 [&_li]:mt-2 [&_a]:text-sm [&_a]:text-gray-600 [&_a]:no-underline [&_a]:block [&_a]:cursor-pointer [&_a]:transition-colors hover:[&_a]:text-blue-600 hover:[&_a]:font-medium">
+              <Document
+                file={pdfUrl}
+                loading="Carregando índice..."
+                options={options}
+              >
+                <Outline onItemClick={onItemClick} />
+              </Document>
+            </div>
+          ) : (
+            // MENSAGEM QUANDO NÃO HÁ ÍNDICE
+            <div className="flex flex-col items-center justify-center h-48 text-gray-400 text-center p-4">
+              <BookX size={48} className="mb-2 opacity-50" />
+              <p className="text-sm">
+                Este documento não possui um índice interativo.
+              </p>
+            </div>
+          )}
         </div>
       </aside>
 
-      {/* --- Área Principal --- */}
       <main className="flex-1 flex flex-col h-full overflow-hidden relative transition-all duration-300">
-        {/* Toolbar Superior */}
         <div className="h-16 bg-white border-b border-gray-200 flex justify-between items-center px-4 md:px-6 shadow-sm z-10 shrink-0 gap-4">
-          {/* Grupo Esquerda: Menu + Download */}
           <div className="flex items-center gap-2 md:gap-4">
             {!sidebarOpen && (
               <button
@@ -156,7 +179,6 @@ const ViwerPDF = ({ pdfUrl }) => {
             </button>
           </div>
 
-          {/* Grupo Centro: Paginação (Setas + Input) */}
           <div className="flex items-center gap-2 bg-gray-50 p-1 rounded-lg border border-gray-200">
             <button
               onClick={() => changePage(-1)}
@@ -173,13 +195,12 @@ const ViwerPDF = ({ pdfUrl }) => {
                 max={numPages || 1}
                 value={pageInput}
                 onChange={(e) => setPageInput(e.target.value)}
-                onBlur={handlePageSubmit} // Salva ao clicar fora também
+                onBlur={handlePageSubmit}
                 className="w-12 text-center text-sm font-medium bg-transparent outline-none hover:bg-white focus:bg-white focus:ring-1 focus:ring-blue-300 rounded transition-all appearance-none m-0"
               />
               <span className="text-sm font-medium text-gray-500 select-none">
                 / {numPages || "--"}
               </span>
-              {/* Botão submit invisível para permitir o ENTER */}
               <button type="submit" hidden />
             </form>
 
@@ -192,7 +213,6 @@ const ViwerPDF = ({ pdfUrl }) => {
             </button>
           </div>
 
-          {/* Grupo Direita: Zoom */}
           <div className="hidden md:flex items-center gap-2">
             <button
               onClick={() => setScale((s) => Math.max(0.5, s - 0.1))}
@@ -212,7 +232,6 @@ const ViwerPDF = ({ pdfUrl }) => {
           </div>
         </div>
 
-        {/* Wrapper do Documento */}
         <div
           ref={containerRef}
           className="flex-1 bg-slate-700 overflow-y-auto flex justify-center p-2 md:p-8 relative"
@@ -220,6 +239,7 @@ const ViwerPDF = ({ pdfUrl }) => {
           <div className="shadow-2xl h-fit">
             <Document
               file={pdfUrl}
+              options={options}
               onLoadSuccess={onDocumentLoadSuccess}
               loading={
                 <div className="flex items-center gap-2 text-white">
@@ -240,6 +260,7 @@ const ViwerPDF = ({ pdfUrl }) => {
                 className="bg-white"
                 renderTextLayer={true}
                 renderAnnotationLayer={true}
+                devicePixelRatio={Math.min(window.devicePixelRatio, 2)}
               />
             </Document>
           </div>
