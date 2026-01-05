@@ -1,8 +1,32 @@
 import { useState } from "react";
 import ViwerPDF from "./ViwerPDF";
 
+import manuaisData from "../constants/lista_manuais.json";
+
+const manualsSections = {
+  manufacturer: "jlg",
+  category: "diesel",
+  machineType: "boom-lift",
+  machineModel: "450",
+};
+
+const partsManuals = manuaisData.filter((item) => {
+  return item.caminho_r2.includes("parts");
+});
+
+//EXTRAIR NOMES DAS MÁQUINAS
+const extractMachineName = (array) => {
+  //função precisa de mais um parâmetro para o split
+  const machineNames = array.map(({ nome_arquivo = "" }) =>
+    nome_arquivo.split("parts")[0].replaceAll("-", " ").trim()
+  );
+  return machineNames;
+};
+console.log(extractMachineName(partsManuals));
+// console.table(partsManuals);
+
 export function Catalogo() {
-  const [pdfUrl, setPdfUrl] = useState("");
+  const [pdfUrl, setPdfUrl] = useState(" ");
 
   return (
     <div>

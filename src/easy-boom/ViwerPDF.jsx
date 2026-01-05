@@ -55,7 +55,7 @@ const ViwerPDF = ({ pdfUrl }) => {
           if (entry.contentRect.width) {
             const width = window.innerWidth;
 
-            // Lógica Simplificada:
+            // Lógica:
             // Menor que 1024px (Mobile e Tablet) -> Margem 10px (Visual nativo)
             // Maior que 1024px (Desktop) -> Margem 50px (Visual limpo)
             const margin = width < 1024 ? 10 : 50;
