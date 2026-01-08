@@ -9,7 +9,7 @@ import {
   ZoomOut,
   RotateCw,
   Download,
-  BookX, // Ícone novo para "sem índice"
+  BookX,
 } from "lucide-react";
 
 import "react-pdf/dist/Page/AnnotationLayer.css";
@@ -54,12 +54,7 @@ const ViwerPDF = ({ pdfUrl }) => {
         for (const entry of entries) {
           if (entry.contentRect.width) {
             const width = window.innerWidth;
-
-            // Lógica:
-            // Menor que 1024px (Mobile e Tablet) -> Margem 10px (Visual nativo)
-            // Maior que 1024px (Desktop) -> Margem 50px (Visual limpo)
             const margin = width < 1024 ? 10 : 50;
-
             setContainerWidth(entry.contentRect.width - margin);
           }
         }
@@ -73,16 +68,13 @@ const ViwerPDF = ({ pdfUrl }) => {
     return () => resizeObserver.disconnect();
   }, [sidebarOpen]);
 
-  // ATUALIZADO: Recebe o objeto PDF completo para verificar o índice
   function onDocumentLoadSuccess(pdf) {
     setNumPages(pdf.numPages);
     setPageNumber(1);
 
-    // Verifica se o PDF tem outline (sumário)
     pdf
       .getOutline()
       .then((outline) => {
-        // Se outline for null ou array vazio, não tem índice
         setHasOutline(outline && outline.length > 0);
       })
       .catch(() => {
@@ -139,7 +131,6 @@ const ViwerPDF = ({ pdfUrl }) => {
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
-          {/* LÓGICA DE EXIBIÇÃO DO ÍNDICE */}
           {hasOutline ? (
             <div className="[&_ul]:list-none [&_ul]:pl-2 [&_li]:mt-2 [&_a]:text-sm [&_a]:text-gray-600 [&_a]:no-underline [&_a]:block [&_a]:cursor-pointer [&_a]:transition-colors hover:[&_a]:text-blue-600 hover:[&_a]:font-medium">
               <Document
@@ -151,7 +142,6 @@ const ViwerPDF = ({ pdfUrl }) => {
               </Document>
             </div>
           ) : (
-            // MENSAGEM QUANDO NÃO HÁ ÍNDICE
             <div className="flex flex-col items-center justify-center h-48 text-gray-400 text-center p-4">
               <BookX size={48} className="mb-2 opacity-50" />
               <p className="text-sm">
@@ -163,7 +153,9 @@ const ViwerPDF = ({ pdfUrl }) => {
       </aside>
 
       <main className="flex-1 flex flex-col h-full overflow-hidden relative transition-all duration-300">
-        <div className="h-16 bg-white border-b border-gray-200 flex justify-between items-center px-4 md:px-6 shadow-sm z-10 shrink-0 gap-4">
+        {/* --- Toolbar Superior --- */}
+        <div className="h-16 bg-white border-b border-gray-200 flex justify-between items-center px-2 md:px-6 shadow-sm z-10 shrink-0 gap-2 md:gap-4">
+          {/* Grupo Esquerda: Menu + Download */}
           <div className="flex items-center gap-2 md:gap-4">
             {!sidebarOpen && (
               <button
@@ -176,7 +168,7 @@ const ViwerPDF = ({ pdfUrl }) => {
 
             <button
               onClick={handleDownload}
-              className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 text-blue-700 rounded hover:bg-blue-100 cursor-pointer transition-colors text-sm font-medium border border-blue-100"
+              className="flex items-center gap-2 px-2 md:px-3 py-1.5 bg-blue-50 text-blue-700 rounded hover:bg-blue-100 cursor-pointer transition-colors text-sm font-medium border border-blue-100"
               title="Baixar Manual"
             >
               <Download size={18} />
@@ -184,11 +176,12 @@ const ViwerPDF = ({ pdfUrl }) => {
             </button>
           </div>
 
-          <div className="flex items-center gap-2 bg-gray-50 p-1 rounded-lg border border-gray-200">
+          {/* Grupo Centro: Paginação */}
+          <div className="flex items-center gap-1 md:gap-2 bg-gray-50 p-1 rounded-lg border border-gray-200">
             <button
               onClick={() => changePage(-1)}
               disabled={pageNumber <= 1}
-              className="p-1.5 hover:bg-white hover:shadow-sm rounded disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+              className="p-1 md:p-1.5 hover:bg-white hover:shadow-sm rounded disabled:opacity-30 disabled:cursor-not-allowed transition-all"
             >
               <ChevronLeft size={16} />
             </button>
@@ -201,7 +194,7 @@ const ViwerPDF = ({ pdfUrl }) => {
                 value={pageInput}
                 onChange={(e) => setPageInput(e.target.value)}
                 onBlur={handlePageSubmit}
-                className="w-12 text-center text-sm font-medium bg-transparent outline-none hover:bg-white focus:bg-white focus:ring-1 focus:ring-blue-300 rounded transition-all appearance-none m-0"
+                className="w-10 md:w-12 text-center text-sm font-medium bg-transparent outline-none hover:bg-white focus:bg-white focus:ring-1 focus:ring-blue-300 rounded transition-all appearance-none m-0"
               />
               <span className="text-sm font-medium text-gray-500 select-none">
                 / {numPages || "--"}
@@ -212,25 +205,29 @@ const ViwerPDF = ({ pdfUrl }) => {
             <button
               onClick={() => changePage(1)}
               disabled={pageNumber >= numPages}
-              className="p-1.5 hover:bg-white hover:shadow-sm rounded disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+              className="p-1 md:p-1.5 hover:bg-white hover:shadow-sm rounded disabled:opacity-30 disabled:cursor-not-allowed transition-all"
             >
               <ChevronRight size={16} />
             </button>
           </div>
 
-          <div className="hidden md:flex items-center gap-2">
+          {/* Grupo Direita: Zoom (Agora VISÍVEL no mobile) */}
+          {/* Alterado: Removido 'hidden', ajustado gap e step para 0.25 */}
+          <div className="flex items-center gap-1 md:gap-2">
             <button
-              onClick={() => setScale((s) => Math.max(0.5, s - 0.1))}
-              className="p-2 hover:bg-gray-100 rounded text-gray-500"
+              onClick={() => setScale((s) => Math.max(0.5, s - 0.25))}
+              className="p-1.5 md:p-2 hover:bg-gray-100 rounded text-gray-500"
             >
               <ZoomOut size={18} />
             </button>
-            <span className="text-xs text-gray-500 w-10 text-center select-none">
+
+            <span className="text-xs text-gray-500 w-8 md:w-10 text-center select-none">
               {Math.round(scale * 100)}%
             </span>
+
             <button
-              onClick={() => setScale((s) => Math.min(2.0, s + 0.1))}
-              className="p-2 hover:bg-gray-100 rounded text-gray-500"
+              onClick={() => setScale((s) => Math.min(3.0, s + 0.25))}
+              className="p-1.5 md:p-2 hover:bg-gray-100 rounded text-gray-500"
             >
               <ZoomIn size={18} />
             </button>
