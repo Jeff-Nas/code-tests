@@ -38,7 +38,7 @@ console.log(extractMachineName(partsManuals));
 // console.table(partsManuals);
 
 export function Catalogo() {
-  const [pdfUrl, setPdfUrl] = useState("/public/banner-viwer.pdf");
+  const [pdfUrl, setPdfUrl] = useState("/banner-viwer.pdf");
 
   return (
     <div>
