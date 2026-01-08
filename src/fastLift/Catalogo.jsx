@@ -1,7 +1,6 @@
-import { useState } from "react";
 import ViwerPDF from "./ViwerPDF";
-
 import manuaisData from "../constants/lista_manuais.json";
+import { useState } from "react";
 import { FavoriteManual } from "./FavoriteManual";
 
 const machinesData = [
@@ -39,7 +38,7 @@ console.log(extractMachineName(partsManuals));
 // console.table(partsManuals);
 
 export function Catalogo() {
-  const [pdfUrl, setPdfUrl] = useState(" ");
+  const [pdfUrl, setPdfUrl] = useState("/public/banner-viwer.pdf");
 
   return (
     <div>

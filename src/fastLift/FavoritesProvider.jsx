@@ -1,6 +1,6 @@
 import { createContext, useEffect, useState } from "react";
 
-const FavoritesContext = createContext();
+export const FavoritesContext = createContext();
 
 export function FavoritesProvider({ children }) {
   const FAVORITES_STORAGE_KEY = "favoriteManuals";
@@ -12,14 +12,6 @@ export function FavoritesProvider({ children }) {
     return saved ? JSON.parse(saved) : [];
   });
 
-  const isFavorite = favoriteManuals.some((item) => item.model === pdfName); //verifica se o manual já está na localStorage para atualizar o botão
-  const [liked, setLiked] = useState(isFavorite);
-
-  const newFavorite = {
-    model: pdfName,
-    url: pdfUrl,
-  };
-
   useEffect(() => {
     localStorage.setItem(
       FAVORITES_STORAGE_KEY,
@@ -28,7 +20,7 @@ export function FavoritesProvider({ children }) {
   }, [favoriteManuals]);
 
   return (
-    <FavoritesContext.Provider value={favoriteManuals}>
+    <FavoritesContext.Provider value={{ favoriteManuals, setFavoriteManuals }}>
       {children}
     </FavoritesContext.Provider>
   );

@@ -1,7 +1,17 @@
 import { FileHeart } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useContext, useState } from "react";
+import { FavoritesContext } from "./FavoritesProvider";
 
 export function FavoriteManual({ pdfName, pdfUrl = "", className = "" }) {
+  const { favoriteManuals, setFavoriteManuals } = useContext(FavoritesContext);
+  const isFavorite = favoriteManuals.some((item) => item.model === pdfName); //verifica se o manual já está na localStorage para atualizar o botão
+  const [liked, setLiked] = useState(isFavorite);
+
+  const newFavorite = {
+    model: pdfName,
+    url: pdfUrl,
+  };
+
   const handleFavorite = () => {
     setLiked(!liked);
 
