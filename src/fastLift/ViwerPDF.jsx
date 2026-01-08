@@ -22,9 +22,6 @@ const ViwerPDF = ({ pdfUrl }) => {
   const [numPages, setNumPages] = useState(null);
   const [pageNumber, setPageNumber] = useState(1);
   const [pageInput, setPageInput] = useState(1);
-
-  // NOVO: Estado para saber se tem índice
-  // Começa como true (ou null) para não mostrar a mensagem de erro antes de carregar
   const [hasOutline, setHasOutline] = useState(true);
 
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -33,7 +30,6 @@ const ViwerPDF = ({ pdfUrl }) => {
 
   const containerRef = useRef(null);
 
-  // OTIMIZAÇÃO SAFARI: Opções de fonte memoizadas
   const options = useMemo(
     () => ({
       cMapUrl: `https://unpkg.com/pdfjs-dist@${pdfjs.version}/cmaps/`,
@@ -153,9 +149,7 @@ const ViwerPDF = ({ pdfUrl }) => {
       </aside>
 
       <main className="flex-1 flex flex-col h-full overflow-hidden relative transition-all duration-300">
-        {/* --- Toolbar Superior --- */}
         <div className="h-16 bg-white border-b border-gray-200 flex justify-between items-center px-2 md:px-6 shadow-sm z-10 shrink-0 gap-2 md:gap-4">
-          {/* Grupo Esquerda: Menu + Download */}
           <div className="flex items-center gap-2 md:gap-4">
             {!sidebarOpen && (
               <button
@@ -176,7 +170,6 @@ const ViwerPDF = ({ pdfUrl }) => {
             </button>
           </div>
 
-          {/* Grupo Centro: Paginação */}
           <div className="flex items-center gap-1 md:gap-2 bg-gray-50 p-1 rounded-lg border border-gray-200">
             <button
               onClick={() => changePage(-1)}
@@ -211,8 +204,6 @@ const ViwerPDF = ({ pdfUrl }) => {
             </button>
           </div>
 
-          {/* Grupo Direita: Zoom (Agora VISÍVEL no mobile) */}
-          {/* Alterado: Removido 'hidden', ajustado gap e step para 0.25 */}
           <div className="flex items-center gap-1 md:gap-2">
             <button
               onClick={() => setScale((s) => Math.max(0.5, s - 0.25))}
@@ -236,9 +227,10 @@ const ViwerPDF = ({ pdfUrl }) => {
 
         <div
           ref={containerRef}
-          className="flex-1 bg-slate-700 overflow-y-auto flex justify-center p-2 lg:p-8 relative"
+          className="flex-1 bg-slate-700 overflow-auto flex items-start p-2 lg:p-8 relative"
         >
-          <div className="shadow-2xl h-fit">
+          {/*página do pdf */}
+          <div className="shadow-2xl h-fit mx-auto">
             <Document
               file={pdfUrl}
               options={options}
